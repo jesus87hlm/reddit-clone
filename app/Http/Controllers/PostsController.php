@@ -12,7 +12,7 @@ class PostsController extends Controller
 {
     public function index()
     {
-        $posts = Post::orderBy('id','desc')->paginate(10);
+        $posts = Post::with('user')->orderBy('id','desc')->paginate(10);
 
         return view('posts/index')->with(['posts'=>$posts]);
     }
@@ -24,33 +24,43 @@ class PostsController extends Controller
 
     public function create()
     {
-        return view('posts.create');
+        $post = new Post;
+        return view('posts.create')->with(['post' => $post]);
     }
 
     public function store(CreatePostRequest $request)
     {
-        $post = Post::create($request->only('title','description','url'));
+        $post = new Post();
+        $post->fill($request->only('title','description','url'));
+        $post->user_id = auth()->user()->id;
         $post->save();
 
+        session()->Flash('message', 'Post Created!');
         return redirect()->route('posts_path');
     }
 
     public function edit(Post $post)
     {
+        if($post->user_id != auth()->user()->id)
+            return redirect()->route('posts_path');
+
         return view('posts.edit')->with(['post'=>$post]);
     }
 
     public function update(Post $post, UpdatePostRequest $request)
     {
         $post->update($request->only('title','description','url'));
-
+        session()->Flash('message', 'Post Updated!');
         return redirect()->route('post_path', ['post' =>$post->id]);
     }
 
     public function delete(Post $post)
     {
-        $post->delete();
+        if($post->user_id != auth()->user()->id)
+            return redirect()->route('posts_path');
 
+        $post->delete();
+        session()->Flash('message', 'Post Deleted!');
         return redirect()->route('posts_path');
     }
 }
